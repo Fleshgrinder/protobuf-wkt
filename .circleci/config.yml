@@ -3,7 +3,7 @@ version: 2
 jobs:
   sync:
     docker:
-      - image: fleshgrinder/alpine-curl-git-jq-tar
+      - image: fleshgrinder/docker-alpine-scripting
     working_directory: /home
     steps:
       - checkout
