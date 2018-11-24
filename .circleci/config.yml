@@ -4,7 +4,6 @@ jobs:
   sync:
     docker:
       - image: fleshgrinder/docker-alpine-scripting
-    working_directory: /home
     steps:
       - checkout
       - run: ./sync
@@ -15,10 +14,12 @@ workflows:
     jobs:
       - sync:
           context: github-public-token
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
           filters:
             branches:
-              only:
-                - master
+              only: master
+#    triggers:
+#      - schedule:
+#          cron: "0 0 * * *"
+#          filters:
+#            branches:
+#              only: master
