@@ -1,0 +1,24 @@
+version: 2
+
+jobs:
+  sync:
+    docker:
+      - image: fleshgrinder/alpine-curl-git-jq-tar
+    working_directory: /home
+    steps:
+      - checkout
+      - run: ./sync
+
+workflows:
+  version: 2
+  sync:
+    jobs:
+      - sync:
+          context: github-public-token
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
