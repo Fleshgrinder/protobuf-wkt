@@ -14,3 +14,9 @@ on a daily basis; filtering out any unwanted contents.
 There is a branch for every Protobuf release as well as a tag and a GitHub
 release. They contain the WKT Protobuf definitions and the original license
 only, nothing else!
+
+## License
+
+The content of this branch is licensed under the [Unlicense](UNLICENSE.md).
+Other branches have their own license, please refer to the individual `LICENSE`
+files of them.
