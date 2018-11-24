@@ -31,7 +31,7 @@ for tarball_url in $(curl -fsu "${auth}" 'https://api.github.com/repos/protocolb
 
         git add .
         git commit -m "${release}"
-        git push
+        git push -u
         curl -fsu "${auth}" -d "{\"tag_name\":\"${release}\",\"target_commitish\":\"${release}\",\"name\":\"${release}\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases"
 
         cd "${cwd}"
