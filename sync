@@ -29,7 +29,7 @@ for tarball_url in $(curl -fsu "${auth}" 'https://api.github.com/repos/protocolb
         tar -xf "${tarball}" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
         tar -xf "${tarball}" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
 
-        git add -q . >/dev/null
+        git add . >/dev/null
         git commit -qm "${release}" >/dev/null
         git push -q --set-upstream origin "${release}" >/dev/null
         curl -fsu "${auth}" -d "{\"tag_name\":\"${release}\",\"target_commitish\":\"${release}\",\"name\":\"${release}\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases" >/dev/null
