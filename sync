@@ -1,45 +1,47 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-shopt -s extglob
 
 info() {
     printf '\033[0;32m%s\033[0m\n' "$*"
 }
 
-readonly cwd=$PWD
-readonly auth="${GITHUB_USER:?environment variable must be set}:${GITHUB_TOKEN:?environment variable must be set}"
-readonly build_dir="$PWD/build"
+gh() {
+    (set +x && curl -sfLSH "Authorization: bearer $GITHUB_TOKEN" -H 'application/vnd.github.v3+json' "$@")
+}
 
-git config user.name "${GITHUB_USER:?environment variable must be set}"
-git config user.email "${GITHUB_EMAIL:?environment variable must be set}"
-git remote set-url origin "https://$auth@github.com/Fleshgrinder/protobuf-wkt.git"
+readonly root_dir=$PWD
+readonly build_dir="$root_dir/build"
 
-for tarball_url in $(curl -fsu "$auth" 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match("^.*v3\\.[0-9]+\\.[0-9]+$").string' | sort -u); do
+git config user.name "${GITHUB_USER:-Fleshgrinder}"
+git config user.email "${GITHUB_EMAIL:-fleshgrinder@users.noreply.github.com}"
+
+for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match("^.*v3\\.[0-9]+\\.[0-9]+$").string' | sort -u); do
     release=${tarball_url##*/}
 
-    if curl -fsu "$auth" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release" >/dev/null; then
+    if gh "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
         info "$release already exists"
     else
         info "downloading $release..."
         release_dir="$build_dir/$release"
         mkdir -p "$release_dir"
-        cd "$release_dir"
+        (
+            cd "$release_dir"
 
-        cp -r "$cwd/.git" .git
-        git checkout -q --orphan "$release" >/dev/null
-        rm -fr "!([.]git)"
+            cp -r "$root_dir/.git" .git
+            git checkout --orphan "$release"
+            git rm -rf .
 
-        tarball="$build_dir/$release.tar.gz"
-        curl -fLsu "$auth" -o "$tarball" "$tarball_url" >/dev/null
-        tar -xf "$tarball" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
-        tar -xf "$tarball" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
+            tarball="$build_dir/$release.tar.gz"
+            gh -o "$tarball" "$tarball_url"
+            tar -xf "$tarball" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
+            tar -xf "$tarball" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
 
-        git add . >/dev/null
-        git commit -qm "$release" >/dev/null
-        git push -q --set-upstream origin "$release" >/dev/null
-        curl -fsu "$auth" -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases" >/dev/null
+            git add .
+            git commit -qm "$release"
+            git push --set-upstream origin "$release"
+            gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases"
 
-        info "created $release"
-        cd "$cwd"
+            info "created $release"
+        )
     fi
 done
