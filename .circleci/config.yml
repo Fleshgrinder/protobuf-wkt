@@ -16,10 +16,20 @@ workflows:
           context: github-public-token
           filters:
             branches:
-              only: master
+              only:
+                - master
+  nightly:
+    jobs:
+      - sync:
+          context: github-public-token
+          filters:
+            branches:
+              only:
+                - master
     triggers:
       - schedule:
           cron: "0 0 * * *"
           filters:
             branches:
-              only: master
+              only:
+                - master
