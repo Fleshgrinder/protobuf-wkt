@@ -17,6 +17,6 @@ only, nothing else!
 
 ## License
 
-The content of this branch is licensed under the [Unlicense](UNLICENSE.md).
+The content of this branch is licensed under the [Unlicense](UNLICENSE).
 Other branches have their own license, please refer to the individual `LICENSE`
 files of them.
