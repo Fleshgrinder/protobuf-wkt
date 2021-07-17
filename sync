@@ -18,30 +18,35 @@ git config user.email "${GITHUB_EMAIL:-fleshgrinder@users.noreply.github.com}"
 for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match("^.*v3\\.[0-9]+\\.[0-9]+$").string' | sort -u); do
     release=${tarball_url##*/}
 
-    if gh --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
-        info "$release already exists"
+    if gh -o /dev/null --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
+        info "$release release exists"
     else
-        info "downloading $release..."
-        release_dir="$build_dir/$release"
-        mkdir -p "$release_dir"
-        (
-            cd "$release_dir"
+        if gh -o /dev/null --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/branches/$release"; then
+            info "$release branch exists"
+        else
+            release_dir="$build_dir/$release"
+            mkdir -p "$release_dir"
+            (
+                cd "$release_dir"
 
-            cp -r "$root_dir/.git" .git
-            git checkout --orphan "$release"
-            git rm -rf .
+                cp -r "$root_dir/.git" .git
+                git checkout --orphan "$release"
+                git rm -rf .
 
-            tarball="$build_dir/$release.tar.gz"
-            gh -o "$tarball" "$tarball_url"
-            tar -xf "$tarball" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
-            tar -xf "$tarball" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
+                tarball="$build_dir/$release.tar.gz"
+                gh -o "$tarball" "$tarball_url"
+                tar -xf "$tarball" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
+                tar -xf "$tarball" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
 
-            git add .
-            git commit -qm "$release"
-            git push --set-upstream origin "$release"
-            gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases"
+                git add .
+                git commit -qm "$release"
+                git push --set-upstream origin "$release"
 
-            info "created $release"
-        )
+                info "created branch: $release"
+            )
+        fi
+
+        gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases"
+        info "created release: $release"
     fi
 done
