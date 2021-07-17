@@ -18,7 +18,7 @@ git config user.email "${GITHUB_EMAIL:-fleshgrinder@users.noreply.github.com}"
 for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match("^.*v3\\.[0-9]+\\.[0-9]+$").string' | sort -u); do
     release=${tarball_url##*/}
 
-    if gh "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
+    if gh --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
         info "$release already exists"
     else
         info "downloading $release..."
