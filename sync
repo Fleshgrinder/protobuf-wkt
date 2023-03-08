@@ -6,7 +6,7 @@ info() {
 }
 
 gh() {
-    (set +x && curl -sfLSH "Authorization: bearer $GITHUB_TOKEN" -H 'application/vnd.github.v3+json' "$@")
+    (set +x && curl -fsLSH "Authorization: bearer $GITHUB_TOKEN" -H 'application/vnd.github.v3+json' -H 'X-GitHub-Api-Version: 2022-11-28' --proto =https --tlsv1.2 "$@")
 }
 
 readonly root_dir=$PWD
@@ -15,7 +15,7 @@ readonly build_dir="$root_dir/build"
 git config user.name "${GITHUB_USER:-Fleshgrinder}"
 git config user.email "${GITHUB_EMAIL:-fleshgrinder@users.noreply.github.com}"
 
-for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match("^.*v3\\.[0-9]+\\.[0-9]+$").string' | sort -u); do
+for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match(".*/v([1-9]\\d+\\.\\d+|3\\.\\d+\\.\\d+)$").string' | sort -u); do
     release=${tarball_url##*/}
 
     if gh -o /dev/null --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
@@ -46,7 +46,7 @@ for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/r
             )
         fi
 
-        gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases"
+        gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" 'https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases'
         info "created release: $release"
     fi
 done
