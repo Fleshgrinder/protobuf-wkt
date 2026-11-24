@@ -1,0 +1,5 @@
+check-sourced=true
+enable=all
+extended-analysis=true
+external-sources=true
+severity=style

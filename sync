@@ -2,51 +2,61 @@
 set -Eeuo pipefail
 
 info() {
-    printf '\033[0;32m%s\033[0m\n' "$*"
+  printf '\033[0;32m%s\033[0m\n' "$*"
 }
 
-gh() {
-    (set +x && curl -fsLSH "Authorization: bearer $GITHUB_TOKEN" -H 'application/vnd.github.v3+json' -H 'X-GitHub-Api-Version: 2022-11-28' --proto =https --tlsv1.2 "$@")
-}
-
-readonly root_dir=$PWD
-readonly build_dir="$root_dir/build"
+readonly root_dir=${PWD}
+readonly build_dir="${root_dir}/build"
+readonly mirror_repo='Fleshgrinder/protobuf-wkt'
+readonly upstream_repo='protocolbuffers/protobuf'
 
 git config user.name "${GITHUB_USER:-Fleshgrinder}"
 git config user.email "${GITHUB_EMAIL:-fleshgrinder@users.noreply.github.com}"
 
-for tarball_url in $(gh 'https://api.github.com/repos/protocolbuffers/protobuf/releases' | jq -r '.[].tarball_url | match(".*/v([1-9]\\d+\\.\\d+|3\\.\\d+\\.\\d+)$").string' | sort -u); do
-    release=${tarball_url##*/}
+release_tags=$(
+  gh api "repos/${upstream_repo}/releases" \
+    --jq '.[].tag_name | select(test("^v([1-9][0-9]+\\.[0-9]+|3\\.[0-9]+\\.[0-9]+)$"))' \
+    --paginate |
+    sort -V -u
+)
 
-    if gh -o /dev/null --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases/tags/$release"; then
-        info "$release release exists"
+while IFS= read -r release; do
+  [[ -z ${release} ]] && continue
+
+  # shellcheck disable=SC2310
+  if gh release view "${release}" --repo "${mirror_repo}" &>/dev/null; then
+    info "${release} release exists"
+  else
+    # shellcheck disable=SC2310
+    if gh api "repos/${mirror_repo}/branches/${release}" &>/dev/null; then
+      info "${release} branch exists"
     else
-        if gh -o /dev/null --HEAD "https://api.github.com/repos/Fleshgrinder/protobuf-wkt/branches/$release"; then
-            info "$release branch exists"
-        else
-            release_dir="$build_dir/$release"
-            mkdir -p "$release_dir"
-            (
-                cd "$release_dir"
+      release_dir="${build_dir}/${release}"
+      mkdir -p "${release_dir}"
+      (
+        cd "${release_dir}"
 
-                cp -r "$root_dir/.git" .git
-                git checkout --orphan "$release"
-                git rm -rf .
+        cp -r "${root_dir}/.git" .git
+        git checkout --orphan "${release}"
+        git rm -rf .
 
-                tarball="$build_dir/$release.tar.gz"
-                gh -o "$tarball" "$tarball_url"
-                tar -xf "$tarball" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
-                tar -xf "$tarball" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
+        tarball="${build_dir}/${release}.tar.gz"
+        gh api "repos/${upstream_repo}/tarball/${release}" >"${tarball}"
+        tar -xf "${tarball}" --strip-components=2 --wildcards --no-wildcards-match-slash --exclude='*test*' '*/src/google/protobuf/*.proto'
+        tar -xf "${tarball}" --strip-components=1 --wildcards --no-wildcards-match-slash '*/LICENSE'
 
-                git add .
-                git commit -qm "$release"
-                git push --set-upstream origin "$release"
+        git add .
+        git commit -qm "${release}"
+        git push --set-upstream origin "${release}"
 
-                info "created branch: $release"
-            )
-        fi
-
-        gh -d "{\"tag_name\":\"$release\",\"target_commitish\":\"$release\",\"name\":\"$release\"}" 'https://api.github.com/repos/Fleshgrinder/protobuf-wkt/releases'
-        info "created release: $release"
+        info "created branch: ${release}"
+      )
     fi
-done
+
+    gh api --method POST "repos/${mirror_repo}/releases" \
+      -f "tag_name=${release}" \
+      -f "target_commitish=${release}" \
+      -f "name=${release}"
+    info "created release: ${release}"
+  fi
+done <<<"${release_tags}"
